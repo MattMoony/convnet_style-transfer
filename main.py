@@ -55,11 +55,15 @@ def show_t_img(t):
 def gram_mat(f):
     (b, c, h, w) = f.shape
     f = f.view(b, c, h * w)
-    g = f.bmm(f.transpose(1, 2)) / (c * h * w)
+    f_t = f.transpose(1, 2)
+
+    g = f.bmm(f_t) 
+    g /= (c * h * w)
+
     return g
 
 def train(model, cont_img, style_img, transform, args):
-    img = torch.randn(1, *cont_img.size(), requires_grad=True, device='cuda')
+    img = torch.rand(1, *cont_img.size(), requires_grad=True, device='cuda')
     # img = torch.ones(1, *cont_img.size(), requires_grad=True, device='cuda')
 
     optimizer = optim.Adam([img], lr=args.lr)
@@ -74,11 +78,20 @@ def train(model, cont_img, style_img, transform, args):
     for g in gram_mats:
         g.requires_grad_(False)
 
+    mean = torch.Tensor([0.485, 0.456, 0.406]).cuda().view(1, 3, 1, 1)
+    mean.requires_grad_(False)
+    std = torch.Tensor([0.229, 0.224, 0.225]).cuda().reshape(1, 3, 1, 1)
+    std.requires_grad_(False)
+
     try:
         for i in range(args.iters):
             optimizer.zero_grad()
-            out = model(img)
-            # out = model(transform(img.view(*img.shape[1:])).view(*img.shape))
+
+            # img = transform(img.view(*img.shape[1:]))
+            # img = img.view(1, *img.shape)
+
+            norm_img = (img - mean) / std
+            out = model(norm_img)
 
             content_loss = args.cont_w * mse_loss(out[1], cont_feat[1])
 
@@ -125,7 +138,7 @@ def main():
     cont_img = transform(cont_img / 255.0)
 
     arguments = namedtuple('args', ['lr', 'iters', 'cont_w', 'style_w', 'reg_w'])
-    args = arguments(0.06, 2048, 1., 1., 0.)
+    args = arguments(0.06, 1, 1., 1., 1e-4)
 
     img = train(model, cont_img, style_img, transform, args)
     show_t_img(img)
