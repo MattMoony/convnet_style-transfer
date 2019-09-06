@@ -76,6 +76,23 @@ def norm(b):
     std     = torch.Tensor([0.229, 0.224, 0.225]).cuda().view(3, 1, 1)
     return (b - mean) / std
 
+def load_img(p):
+    img = Image.open(p).convert('RGB')
+    im_transform = transforms.Compose([
+        transforms.ToTensor()
+    ])
+    img = im_transform(img).unsqueeze(0).cuda()
+
+    return img
+
+def to_img(t):
+    img = t.cpu().clone().detach()
+    img = img.numpy().squeeze()
+    img = img.transpose(1, 2, 0)
+    img = img.clip(0, 1)
+
+    return img
+
 def train_s(model, style, w=224, h=224, lr=1, iters=64):
     style_fts = model(norm(style))
     style_gms = [comp_gram(f) for f in style_fts]
@@ -121,11 +138,9 @@ def find_lr(model, style_img, iters=64, n=32, w=224, h=224, top=1, bot=1e-6):
 
     return min_lr
 
-def train(model, style_img, w=224, h=224, lr=1):
-    style = torch.from_numpy(np.array(Image.open(style_img))).cuda().float()
-    style = style / 255.
-    style = style.view(1, style.size()[2], *style.size()[:2])
-
+def train(model, style_img, w=224, h=224, lr=1, reg_w=1e-8):
+    style = load_img(style_img)
+    
     style_fts = model(norm(style))
     style_gms = [comp_gram(f) for f in style_fts]
 
@@ -145,15 +160,18 @@ def train(model, style_img, w=224, h=224, lr=1):
             for f, gm in zip(actvs, style_gms):
                 g = comp_gram(f)
                 lss += mse_loss(g, gm)
+                
+            lss += reg_w * (
+                        torch.sum(torch.abs(img[:, :, :, 1:] - img[:, :, :, :-1])) +
+                        torch.sum(torch.abs(img[:, :, 1:, :] - img[:, :, :-1, :]))
+                    )
 
-            cu = lss.backward()
+            lss.backward()
             optimizer.step()
-
-            input()
 
             if i % 5 == 0:
                 plt.title('Iter#{:04d}'.format(i))
-                plt.imshow(img.detach().cpu().view(*img.shape[2:], img.shape[1]))
+                plt.imshow(to_img(img))
                 plt.pause(1e-3)
 
             print('[iter#{:04d}]: Loss\t-> {:}'.format(i, lss.item()))
@@ -165,11 +183,11 @@ def train(model, style_img, w=224, h=224, lr=1):
     
     plt.subplot(121)
     plt.title('Original')
-    plt.imshow(style.cpu().view(*style.size()[2:], style.size()[1]))
+    plt.imshow(to_img(style))
 
     plt.subplot(122)
     plt.title('Style')
-    plt.imshow(img.detach().cpu().view(*img.size()[2:], img.size()[1]))
+    plt.imshow(to_img(img))
 
     plt.show()
 
@@ -178,11 +196,11 @@ def main():
     model.cuda()
 
     style_img = 'media/style/gustav-klimt-kiss.jpg'
-    w = 224
+    w = 400
     h = 224
 
     # lr = find_lr(model, style_img, w=w, h=h)
-    lr = 0.2
+    lr = .3
     train(model, style_img, w=w, h=h, lr=lr)
 
 if __name__ == '__main__':
