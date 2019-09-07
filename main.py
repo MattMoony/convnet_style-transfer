@@ -92,7 +92,12 @@ def to_img(t):
 
     return img
 
-def train(model, content_img, style_img, lr=0.2, iters=64, content_w=1, style_w=1, tv_w=1e-5):
+def save_img(t, p):
+    img = to_img(t)
+    img = Image.fromarray((img * 255.).astype(np.uint8))
+    img.save(p)
+
+def train(model, content_img, style_img, lr=0.2, content_w=1, style_w=1, tv_w=1e-5):
     content = load_img(content_img)
     style = load_img(style_img)
 
@@ -144,28 +149,34 @@ def train(model, content_img, style_img, lr=0.2, iters=64, content_w=1, style_w=
 
     plt.ioff()
 
-    plt.subplot(231)
+    plt.subplot(131)
     plt.title('Content')
     plt.imshow(to_img(content))
 
-    plt.subplot(233)
+    plt.subplot(133)
     plt.title('Style')
     plt.imshow(to_img(style))
 
-    plt.subplot(235)
+    plt.subplot(132)
     plt.title('Result')
     plt.imshow(to_img(img))
 
     plt.show()
+    return img
 
 def main():
     model = VGG()
     model.cuda()
 
-    content_img = 'media/content/ballerina-scaled.jpg'
-    style_img = 'media/style/van-gogh-starry-night.jpg'
+    content_img = 'media/content/lake-pier-scaled.jpg'
+    style_img = 'media/style/hiroshige-toyokawa-bridge.jpg'
 
-    train(model, content_img, style_img, content_w=0.01, style_w=100, tv_w=1e-5)
+    result_img = train(model, content_img, style_img, lr=0.1, content_w=1, style_w=1e6, tv_w=3e-4)
+
+    yN = input('Save result? [y/N] ')
+    if yN in ['y', 'Y']:
+        name = input('Enter a filename: ')
+        save_img(result_img, 'media/results/' + name + '.jpg')
     
 if __name__ == '__main__':
     main()
