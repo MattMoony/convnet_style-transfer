@@ -5,10 +5,12 @@ import torch.optim as optim
 import torchvision.models as models
 import torchvision.transforms as transforms
 
+import os
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
 from collections import namedtuple
+from argparse import ArgumentParser
 
 class VGG(nn.Module):
     def __init__(self):
@@ -97,7 +99,7 @@ def save_img(t, p):
     img = Image.fromarray((img * 255.).astype(np.uint8))
     img.save(p)
 
-def train(model, content_img, style_img, lr=0.2, content_w=1, style_w=1, tv_w=1e-5):
+def train(model, content_img, style_img, lr=0.2, content_w=1, style_w=1, tv_w=1e-5, interval=5, verbose=True):
     content = load_img(content_img)
     style = load_img(style_img)
 
@@ -137,7 +139,7 @@ def train(model, content_img, style_img, lr=0.2, content_w=1, style_w=1, tv_w=1e
             total_loss.backward()
             optimizer.step()
 
-            if i % 5 == 0:
+            if verbose and (i % interval == 0):
                 plt.title('Iter#{:04d}'.format(i))
                 plt.imshow(to_img(img))
                 plt.pause(1e-3)
@@ -149,34 +151,87 @@ def train(model, content_img, style_img, lr=0.2, content_w=1, style_w=1, tv_w=1e
 
     plt.ioff()
 
-    plt.subplot(131)
-    plt.title('Content')
-    plt.imshow(to_img(content))
+    if verbose:
+        plt.subplot(131)
+        plt.title('Content')
+        plt.imshow(to_img(content))
 
-    plt.subplot(133)
-    plt.title('Style')
-    plt.imshow(to_img(style))
+        plt.subplot(133)
+        plt.title('Style')
+        plt.imshow(to_img(style))
 
-    plt.subplot(132)
-    plt.title('Result')
-    plt.imshow(to_img(img))
+        plt.subplot(132)
+        plt.title('Result')
+        plt.imshow(to_img(img))
 
-    plt.show()
+        plt.show()
+
     return img
 
+def check_paths(*args):
+    true = []
+    false = []
+
+    for p in args:
+        if os.path.isfile(p):
+            true.append(p)
+        else:
+            false.append(p)
+
+    return true, false
+
 def main():
+    parser = ArgumentParser()
+
+    parser.add_argument('-c', '--content', dest='content', help='Location of the content image ... ', required=True)
+    parser.add_argument('-s', '--style', dest='style', help='Location of the style image ... ', required=True)
+    parser.add_argument('-d', '--destination', dest='destination', help='Destination of the result ... ')
+
+    parser.add_argument('-v', '--verbose', action='store_true', dest='verbose', help='Display intermediate results? ')
+    parser.add_argument('-i', '--interval', type=int, dest='interval', help='The interval to display current results ... ', 
+                            default=10)
+
+    parser.add_argument('--lr', dest='lr', type=float, help='Specify a learning rate ... ', default=0.1)
+    parser.add_argument('--content-w', dest='content_w', type=float, help='Specify the content weight ... ', default=1)
+    parser.add_argument('--style-w', dest='style_w', type=float, help='Specify the style weight ... ', default=10e5)
+    parser.add_argument('--tv-w', dest='tv_w', type=float, help='Specify a total variation weight ... ', default=3e-4)
+
+    args = parser.parse_args()
+
+    y, n = check_paths(args.content, args.style)
+    if len(n) > 0:
+        print('The following files don\'t exist: ' + ', '.join(n))
+        os._exit(1)
+
+    if args.destination and (
+        not os.path.isdir(os.path.dirname(args.destination)) or 
+        os.path.isfile(args.destination) or
+        not os.path.basename(args.destination).endswith('.jpg')
+    ):
+        print('The destination path is not valid ... (either non-existend directory, filename already present or non-jpg filename)')
+        os._exit(1)
+
     model = VGG()
     model.cuda()
 
-    content_img = 'media/content/lake-pier-scaled.jpg'
-    style_img = 'media/style/hiroshige-toyokawa-bridge.jpg'
+    result_img = train(model, args.content, args.style, 
+                        lr=args.lr, content_w=args.content_w, style_w=args.style_w, tv_w=args.tv_w, 
+                        verbose=args.verbose, interval=args.interval)
 
-    result_img = train(model, content_img, style_img, lr=0.1, content_w=1, style_w=1e6, tv_w=3e-4)
+    if not args.destination:
+        yN = input('Save result? [y/N] ')
+        if yN in ['y', 'Y']:
+            path = ''
+            while (
+                not os.path.isdir(os.path.dirname(path)) or 
+                os.path.isfile(path) or
+                not os.path.basename(path).endswith('.jpg')
+            ):
+                path = input('Enter the destination: ')
 
-    yN = input('Save result? [y/N] ')
-    if yN in ['y', 'Y']:
-        name = input('Enter a filename: ')
-        save_img(result_img, 'media/results/' + name + '.jpg')
+            save_img(result_img, path)
+    else:
+        save_img(result_img, args.destination)
     
 if __name__ == '__main__':
     main()
