@@ -14,19 +14,19 @@ The style-transfer script is built to work like any other command-line applicati
 
 | Argument          | Explanation                                                       | Required? | Default             |
 |-------------------|-------------------------------------------------------------------|-----------|---------------------|
-| -h, --help        | Displays the help message                                         | - [ ]     | -                   |
+| -h, --help        | Displays the help message                                         | ❌         | -                   |
 |                   |                                                                   |           |                     |
-| -c, --content     | Specifies the location of the content-image                       | - [x]     | -                   |
-| -s, --style       | Specifies the location of the style-image                         | - [x]     | -                   |
-| -d, --destination | Specifies the destination of the resulting image                  | - [ ]     | -                   |
+| -c, --content     | Specifies the location of the content-image                       | ✔️         | -                   |
+| -s, --style       | Specifies the location of the style-image                         | ✔️         | -                   |
+| -d, --destination | Specifies the destination of the resulting image                  | ❌         | -                   |
 |                   |                                                                   |           |                     |
-| -v, --verbose     | Flag; Should intermediate results be displayed?                   | - [ ]     | False               |
-| -i, --interval    | Defines the interval in which current results should be displayed | - [ ]     | 10                  |
+| -v, --verbose     | Flag; Should intermediate results be displayed?                   | ❌         | False               |
+| -i, --interval    | Defines the interval in which current results should be displayed | ❌         | 10                  |
 |                   |                                                                   |           |                     |
-| --lr              | Defines the learning rate                                         | - [ ]     | 0.1                 |
-| --content-w       | Provides the content weight                                       | - [ ]     | 1                   |
-| --style-w         | Provides the style weight                                         | - [ ]     | 10<sup>5</sup>      |
-| --tv-w            | Provides the total variation weight                               | - [ ]     | 3 * 10<sup>-3</sup> |
+| --lr              | Defines the learning rate                                         | ❌         | 0.1                 |
+| --content-w       | Provides the content weight                                       | ❌         | 1                   |
+| --style-w         | Provides the style weight                                         | ❌         | 10<sup>5</sup>      |
+| --tv-w            | Provides the total variation weight                               | ❌         | 3 * 10<sup>-3</sup> |
 
 ## Results
 
